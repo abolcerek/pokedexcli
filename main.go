@@ -5,10 +5,16 @@ import (
 	"fmt"
 	"os"
 )
+
+type config struct {
+	Next string
+	Previous string
+}
 type cliCommand struct {
 	name string
 	description string
 	callback func() error
+	tracker *config
 }
 
 func main() {
@@ -23,6 +29,16 @@ func main() {
         description: "Displays a help message",
         callback:    commandHelp,
     	},
+	"map": {
+        name:        "map",
+        description: "Displays a location map",
+        callback:    commandMap,
+    	},
+	"mapb": {
+        name:        "map",
+        description: "Displays the previous locations",
+        callback:    commandMapb,
+    	},
 	}
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
@@ -32,7 +48,7 @@ func main() {
 		res := cleanInput(text)
 		value, ok := mapper[res[0]]
 		if ok == false {
-			fmt.Print("Unknown command")
+			fmt.Print("Unknown command\n")
 		} else {
 			value.callback()
 		}
