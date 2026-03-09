@@ -33,45 +33,75 @@ func cleanInput(text string)[]string {
 	return words
 }
 
-func commandExit() error {
+func commandExit(config *config) error {
 	fmt.Print("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
-func commandHelp() error {
+func commandHelp(config *config) error {
 	fmt.Print("Welcome to the Pokedex!\nUsage:\n\nhelp: Displays a help message\nexit: Exit the Pokedex\nmap: Displays 20 location areas\nmapb: Displays previous 20 location areas\n")
 	return nil
 }
-func commandMap() error {
+func commandMap(config *config) error {
 	url := "https://pokeapi.co/api/v2/location-area"
-	if Next != "" {
-		url = Next
+	if config.Next != "" {
+		url = config.Next
 	}
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
+	value, ok := config.cache.Get(url)
+	if ok == true {
+		res := Response{}
+		err := json.Unmarshal(value, &res)
+		if err != nil {
+			return err
+		}
+		for _, location := range res.Res {
+			fmt.Printf("%s\n", location.Name)
+		}
+		config.Next = res.Next
+		config.Previous = res.Prevous
+		return nil
+	} else {
+		resp, err := http.Get(url)
+		if err != nil {
+			return err
+		}
+		body, err := io.ReadAll(resp.Body)
+		defer resp.Body.Close()
+		if err != nil {
+			return err
+		}
+		config.cache.Add(url, body)
+		res := Response{}
+		err = json.Unmarshal(body, &res)
+		if err != nil {
+			return err
+		}
+		for _, location := range res.Res {
+			fmt.Printf("%s\n", location.Name)
+		}
+		config.Next = res.Next
+		config.Previous = res.Prevous
+		return nil
 	}
-	body, err := io.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		return err
-	}
-	res := Response{}
-	err = json.Unmarshal(body, &res)
-	if err != nil {
-		return err
-	}
-	for _, location := range res.Res {
-		fmt.Printf("%s\n", location.Name)
-	}
-	Next = res.Next
-	Previous = res.Prevous
-	return nil
 }
-func commandMapb() error {
+func commandMapb(config *config) error {
 	url := "https://pokeapi.co/api/v2/location-area"
-	if Previous != "" {
-		url = Previous
+	if config.Previous != "" {
+		url = config.Previous
+	}
+	value, ok := config.cache.Get(url)
+	if ok == true {
+		res := Response{}
+		err := json.Unmarshal(value, &res)
+		if err != nil {
+			return err
+		}
+		for _, location := range res.Res {
+			fmt.Printf("%s\n", location.Name)
+		}
+		config.Next = res.Next
+		config.Previous = res.Prevous
+		return nil
 	}
 	resp, err := http.Get(url)
 	if err != nil {
@@ -82,6 +112,7 @@ func commandMapb() error {
 	if err != nil {
 		return err
 	}
+	config.cache.Add(url, body)
 	res := Response{}
 	err = json.Unmarshal(body, &res)
 	if err != nil {
@@ -89,14 +120,14 @@ func commandMapb() error {
 	}
 	if Previous == res.Prevous {
 		fmt.Print("you're on the first page\n")
-		Previous = ""
-		Next = ""
+		config.Previous = ""
+		config.Next = ""
 		return nil
 	}
 	for _, location := range res.Res {
 		fmt.Printf("%s\n", location.Name)
 	}
-	Next = res.Next
-	Previous = res.Prevous
+	config.Next = res.Next
+	config.Previous = res.Prevous
 	return nil
 }
